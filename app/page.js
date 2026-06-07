@@ -22,7 +22,31 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); // { ok, status, text, imgUrl }
 
+  // dedicated API-key checker
+  const [checkKey, setCheckKey] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [checkRes, setCheckRes] = useState(null); // { state, msg }
+
   const ep = ENDPOINTS.find((e) => e.id === epId);
+
+  async function checkApiKey(e) {
+    e.preventDefault();
+    if (!checkKey) { setCheckRes({ state: 'bad', msg: 'Tempel API key dulu (hbi_...).' }); return; }
+    setChecking(true);
+    setCheckRes(null);
+    try {
+      const res = await fetch(window.location.origin + '/api/ping', { headers: { 'x-api-key': checkKey } });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setCheckRes({ state: 'ok', msg: `API Key VALID & aktif ✅  (label: ${data.key || '-'})` });
+      else if (res.status === 429) setCheckRes({ state: 'warn', msg: 'Key valid, tapi kuota harian sudah habis ⚠️' });
+      else if (res.status === 403) setCheckRes({ state: 'bad', msg: 'Key tidak valid / dinonaktifkan ❌' });
+      else setCheckRes({ state: 'bad', msg: data.error || `Gagal (${res.status})` });
+    } catch (err) {
+      setCheckRes({ state: 'bad', msg: err.message });
+    } finally {
+      setChecking(false);
+    }
+  }
 
   useEffect(() => {
     fetch('/api/health')
@@ -71,6 +95,24 @@ export default function Home() {
         </span>
         <h1>Habibi Official <span className="gradient-text">API</span></h1>
         <p>Downloader, AI, Search, & Image generator dalam satu API. Coba langsung di bawah 👇</p>
+      </section>
+
+      <section className="card checker">
+        <h3>🔑 Cek Status API Key</h3>
+        <form onSubmit={checkApiKey} className="row" style={{ alignItems: 'flex-end' }}>
+          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+            <label>Tempel API key kamu</label>
+            <input className="input" placeholder="hbi_xxxxxxxx" value={checkKey} onChange={(e) => setCheckKey(e.target.value)} />
+          </div>
+          <button className="btn primary" disabled={checking}>{checking ? 'Cek…' : 'Cek'}</button>
+        </form>
+        {checkRes && (
+          <div className="result">
+            <span className={`pill ${checkRes.state === 'ok' ? 'on' : checkRes.state === 'warn' ? 'plan' : 'off'}`}>
+              {checkRes.msg}
+            </span>
+          </div>
+        )}
       </section>
 
       <section className="card playground">
